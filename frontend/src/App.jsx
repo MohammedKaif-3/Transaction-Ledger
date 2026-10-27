@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import AccountForm from './components/AccountForm';
 import AccountList from './components/AccountList';
+import TransactionForm from './components/TransactionForm';
+import './transaction.css';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const formatMoney = (value) => currency.format(Number(value || 0));
@@ -15,9 +17,13 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [balance, setBalance] = useState('0.00');
   const [transactions, setTransactions] = useState([]);
+  const [historyType, setHistoryType] = useState('all');
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPagination, setHistoryPagination] = useState({ page: 1, limit: 6, total: 0, total_pages: 0 });
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState('');
   const [showAccountForm, setShowAccountForm] = useState(false);
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
 
   const refreshAccounts = useCallback(async (preferredId) => {
     const result = await api.accounts();
@@ -30,14 +36,26 @@ export default function App() {
     return nextSelected;
   }, [selected?.id]);
 
+  const loadHistory = useCallback(async (account, type = historyType, page = 1) => {
+    if (!account) { setTransactions([]); setHistoryPagination({ page: 1, limit: 6, total: 0, total_pages: 0 }); return; }
+    const result = await api.transactions(account.id, {
+      page, limit: 6, ...(type === 'all' ? {} : { type }),
+    });
+    setTransactions(result.data);
+    setHistoryPagination(result.pagination);
+    setHistoryPage(page);
+  }, [historyType]);
+
   const loadAccount = useCallback(async (account) => {
     if (!account) { setBalance('0.00'); setTransactions([]); return; }
     const [balanceResult, historyResult] = await Promise.all([
-      api.balance(account.id), api.transactions(account.id, { page: 1, limit: 6 }),
+      api.balance(account.id), api.transactions(account.id, { page: 1, limit: 6, ...(historyType === 'all' ? {} : { type: historyType }) }),
     ]);
     setBalance(balanceResult.data.balance);
     setTransactions(historyResult.data);
-  }, []);
+    setHistoryPagination(historyResult.pagination);
+    setHistoryPage(1);
+  }, [historyType]);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +70,7 @@ export default function App() {
           const [balanceResult, historyResult] = await Promise.all([
             api.balance(first.id), api.transactions(first.id, { page: 1, limit: 6 }),
           ]);
-          if (active) { setBalance(balanceResult.data.balance); setTransactions(historyResult.data); }
+          if (active) { setBalance(balanceResult.data.balance); setTransactions(historyResult.data); setHistoryPagination(historyResult.pagination); }
         }
       } catch (error) {
         if (active) setPageError(error.message);
@@ -76,6 +94,25 @@ export default function App() {
     await loadAccount(next);
     setShowAccountForm(false);
     setPageError('');
+  }
+
+  async function createTransaction(payload) {
+    await api.createTransaction(selected.id, payload);
+    setShowTransactionForm(false);
+    setPageError('');
+    const [balanceResult] = await Promise.all([api.balance(selected.id), loadHistory(selected, historyType, 1)]);
+    setBalance(balanceResult.data.balance);
+  }
+
+  async function changeHistoryType(type) {
+    setHistoryType(type);
+    setPageError('');
+    try { await loadHistory(selected, type, 1); } catch (error) { setPageError(error.message); }
+  }
+
+  async function changeHistoryPage(page) {
+    setPageError('');
+    try { await loadHistory(selected, historyType, page); } catch (error) { setPageError(error.message); }
   }
 
   return (
@@ -113,13 +150,13 @@ export default function App() {
                   <div className="balance-amount">{formatMoney(balance)}</div>
                   <div className="balance-card-footer"><span className="balance-account"><span className="mini-avatar">{selected?.name?.charAt(0).toUpperCase()}</span>{selected?.name}</span><span className="balance-count">{accounts.length} {accounts.length === 1 ? 'account' : 'accounts'} total</span></div>
                 </article>
-                <article className="quick-card"><div className="quick-card-heading"><div><span className="card-label">GET STARTED</span><h2>Make a move</h2></div><span className="quick-icon">✳</span></div>
-                  <p>Your accounts are ready. Add a credit or debit to get your ledger moving.</p>
-                  <div className="quick-actions"><span className="quick-action-chip"><i className="chip-credit">↑</i>Credit</span><span className="quick-action-chip"><i className="chip-debit">↓</i>Debit</span><span className="quick-action-hint">Coming up next</span></div>
+                <article className="quick-card"><div className="quick-card-heading"><div><span className="card-label">QUICK ACTION</span><h2>Record a transaction</h2></div><span className="quick-icon">✳</span></div>
+                  <p>Log a credit or debit for {selected?.name}. Your balance updates as one safe ledger entry.</p>
+                  <div className="quick-actions"><button className="quick-action-chip action-button" onClick={() => setShowTransactionForm(true)}><i className="chip-credit">↑</i>Add transaction</button><span className="quick-action-hint">Securely recorded</span></div>
                 </article>
               </section>
               <section className="activity-card">
-                <div className="section-heading"><div><span className="card-label">YOUR LEDGER</span><h2>Recent activity</h2></div><span className="activity-account"><span className="mini-avatar">{selected?.name?.charAt(0).toUpperCase()}</span>{selected?.name}</span></div>
+                <div className="section-heading"><div><span className="card-label">YOUR LEDGER</span><h2>Transaction history</h2></div><div className="activity-heading-actions"><select className="filter-select" aria-label="Filter transaction type" value={historyType} onChange={(event) => changeHistoryType(event.target.value)}><option value="all">All types</option><option value="credit">Credits</option><option value="debit">Debits</option></select><button className="button button-outline small-button" onClick={() => setShowTransactionForm(true)}>＋ Add transaction</button></div></div>
                 {transactions.length === 0 ? <div className="activity-empty"><span className="activity-empty-icon">↗</span><div><strong>No activity yet</strong><p>Transactions for {selected?.name} will show up here.</p></div></div> : (
                   <div className="transaction-list">{transactions.map((transaction) => <div className="transaction-row" key={transaction.id}>
                     <span className={`transaction-symbol ${transaction.type}`}>{transaction.type === 'credit' ? '↙' : '↗'}</span>
@@ -127,7 +164,7 @@ export default function App() {
                     <span className={`transaction-amount ${transaction.type}`}>{transaction.type === 'credit' ? '+' : '−'}{formatMoney(transaction.amount)}</span>
                   </div>)}</div>
                 )}
-                <div className="activity-footer"><span>Showing latest transactions</span><span className="sort-indicator">Newest first <span>↓</span></span></div>
+                <div className="activity-footer"><span>{historyPagination.total} {historyPagination.total === 1 ? 'transaction' : 'transactions'}</span><div className="pagination-controls"><span>Page {historyPage} of {Math.max(1, historyPagination.total_pages)}</span><button disabled={historyPage <= 1} onClick={() => changeHistoryPage(historyPage - 1)} aria-label="Previous page">←</button><button disabled={historyPage >= historyPagination.total_pages} onClick={() => changeHistoryPage(historyPage + 1)} aria-label="Next page">→</button></div></div>
               </section>
               <footer className="page-footer"><span>Ledger · Built for clarity.</span><span>Secure account records <b>✳</b></span></footer>
             </>
@@ -139,6 +176,13 @@ export default function App() {
           <button className="modal-close" onClick={() => setShowAccountForm(false)} aria-label="Close">×</button>
           <span className="eyebrow">NEW ACCOUNT</span><h2 id="modal-title">Add an account</h2><p className="modal-copy">Give your account a name. You can add transactions once it’s created.</p>
           <AccountForm onCreate={createAccount} onCancel={() => setShowAccountForm(false)} />
+        </section>
+      </div>}
+      {showTransactionForm && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTransactionForm(false); }}>
+        <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title">
+          <button className="modal-close" onClick={() => setShowTransactionForm(false)} aria-label="Close">×</button>
+          <span className="eyebrow">LEDGER ENTRY · {selected?.name?.toUpperCase()}</span><h2 id="transaction-modal-title">Add a transaction</h2><p className="modal-copy">Record a credit or debit. Entries can’t be changed after they’re saved.</p>
+          <TransactionForm accountName={selected?.name || 'this account'} onCreate={createTransaction} onCancel={() => setShowTransactionForm(false)} />
         </section>
       </div>}
     </div>
