@@ -92,9 +92,15 @@ async function getHistory(accountId, query) {
   if (type !== undefined && !['credit', 'debit'].includes(type)) {
     throw new HttpError(400, 'INVALID_TRANSACTION_TYPE', 'Type filter must be credit or debit.');
   }
-  const page = query.page === undefined ? 1 : Number(query.page);
-  const limit = query.limit === undefined ? 20 : Number(query.limit);
-  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+  const rawPage = query.page === undefined ? '1' : String(query.page);
+  const rawLimit = query.limit === undefined ? '20' : String(query.limit);
+  const page = Number(rawPage);
+  const limit = Number(rawLimit);
+  const offset = (page - 1) * limit;
+  if (!/^\d+$/.test(rawPage) || !/^\d+$/.test(rawLimit)
+    || !Number.isSafeInteger(page) || page < 1
+    || !Number.isSafeInteger(limit) || limit < 1 || limit > 100
+    || !Number.isSafeInteger(offset)) {
     throw new HttpError(400, 'INVALID_PAGINATION', 'Page must be a positive integer and limit must be between 1 and 100.');
   }
 
@@ -102,7 +108,7 @@ async function getHistory(accountId, query) {
     accountId,
     type,
     limit,
-    offset: (page - 1) * limit,
+    offset,
   });
   return {
     data: rows,

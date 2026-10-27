@@ -21,6 +21,9 @@ app.use((req, res) => {
 });
 
 app.use((error, _req, res, _next) => {
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({ error: { code: 'REQUEST_TOO_LARGE', message: 'Request body must be 32 KB or smaller.' } });
+  }
   if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
     return res.status(400).json({ error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' } });
   }
