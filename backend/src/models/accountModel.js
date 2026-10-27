@@ -5,9 +5,9 @@ async function create(name) {
   return findById(String(result.insertId));
 }
 
-async function findById(id, connection = pool) {
+async function findById(id, connection = pool, lock = false) {
   const [rows] = await connection.execute(
-    'SELECT id, name, balance, created_at FROM accounts WHERE id = ?',
+    `SELECT id, name, balance, created_at FROM accounts WHERE id = ?${lock ? ' FOR UPDATE' : ''}`,
     [id],
   );
   return rows[0] || null;
