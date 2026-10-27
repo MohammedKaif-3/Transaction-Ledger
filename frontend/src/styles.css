@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #18251f;
+  background: #f4f5f1;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+.page-shell { min-height: 100vh; display: grid; place-items: center; padding: 28px; }
+.welcome-card { width: min(100%, 680px); padding: clamp(32px, 7vw, 72px); background: #fff; border: 1px solid #e7eae4; border-radius: 28px; box-shadow: 0 24px 80px #293b2f0c; }
+.eyebrow { color: #678173; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+h1 { margin: 18px 0 12px; font: 800 clamp(38px, 7vw, 62px)/1.05 'Manrope', sans-serif; letter-spacing: -.055em; }
+.welcome-card p { margin: 0; color: #6d7771; font-size: 17px; line-height: 1.6; }
+.status-pill { display: inline-flex; align-items: center; gap: 9px; margin-top: 34px; padding: 10px 14px; border: 1px solid #e6ece7; border-radius: 999px; color: #50655a; font-size: 13px; font-weight: 600; }
+.status-pill span { width: 7px; height: 7px; border-radius: 50%; background: #32a56d; }
