@@ -3,7 +3,9 @@ import { api } from './api';
 import AccountForm from './components/AccountForm';
 import AccountList from './components/AccountList';
 import TransactionForm from './components/TransactionForm';
+import TransferForm from './components/TransferForm';
 import './transaction.css';
+import './transfer.css';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const formatMoney = (value) => currency.format(Number(value || 0));
@@ -24,6 +26,7 @@ export default function App() {
   const [pageError, setPageError] = useState('');
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [showTransferForm, setShowTransferForm] = useState(false);
 
   const refreshAccounts = useCallback(async (preferredId) => {
     const result = await api.accounts();
@@ -104,6 +107,14 @@ export default function App() {
     setBalance(balanceResult.data.balance);
   }
 
+  async function transferFunds(payload) {
+    await api.transfer(payload);
+    setShowTransferForm(false);
+    setPageError('');
+    const next = await refreshAccounts(selected.id);
+    await loadAccount(next);
+  }
+
   async function changeHistoryType(type) {
     setHistoryType(type);
     setPageError('');
@@ -152,7 +163,7 @@ export default function App() {
                 </article>
                 <article className="quick-card"><div className="quick-card-heading"><div><span className="card-label">QUICK ACTION</span><h2>Record a transaction</h2></div><span className="quick-icon">✳</span></div>
                   <p>Log a credit or debit for {selected?.name}. Your balance updates as one safe ledger entry.</p>
-                  <div className="quick-actions"><button className="quick-action-chip action-button" onClick={() => setShowTransactionForm(true)}><i className="chip-credit">↑</i>Add transaction</button><span className="quick-action-hint">Securely recorded</span></div>
+                  <div className="quick-actions"><button className="quick-action-chip action-button" onClick={() => setShowTransactionForm(true)}><i className="chip-credit">↑</i>Add transaction</button>{accounts.length > 1 && <button className="quick-action-chip action-button" onClick={() => setShowTransferForm(true)}><i className="chip-debit">⇄</i>Transfer</button>}<span className="quick-action-hint">Securely recorded</span></div>
                 </article>
               </section>
               <section className="activity-card">
@@ -183,6 +194,13 @@ export default function App() {
           <button className="modal-close" onClick={() => setShowTransactionForm(false)} aria-label="Close">×</button>
           <span className="eyebrow">LEDGER ENTRY · {selected?.name?.toUpperCase()}</span><h2 id="transaction-modal-title">Add a transaction</h2><p className="modal-copy">Record a credit or debit. Entries can’t be changed after they’re saved.</p>
           <TransactionForm accountName={selected?.name || 'this account'} onCreate={createTransaction} onCancel={() => setShowTransactionForm(false)} />
+        </section>
+      </div>}
+      {showTransferForm && selected && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTransferForm(false); }}>
+        <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
+          <button className="modal-close" onClick={() => setShowTransferForm(false)} aria-label="Close">×</button>
+          <span className="eyebrow">ACCOUNT TRANSFER</span><h2 id="transfer-modal-title">Move money</h2><p className="modal-copy">Both sides of the transfer are saved together.</p>
+          <TransferForm accounts={accounts} source={selected} onTransfer={transferFunds} onCancel={() => setShowTransferForm(false)} />
         </section>
       </div>}
     </div>

@@ -2,6 +2,7 @@ const cors = require('cors');
 const express = require('express');
 const accountRoutes = require('./routes/accountRoutes');
 const HttpError = require('./utils/httpError');
+const transferRoutes = require('./routes/transferRoutes');
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/accounts', accountRoutes);
+app.use('/api/transfers', transferRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.' } });

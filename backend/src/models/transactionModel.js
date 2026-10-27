@@ -23,6 +23,24 @@ async function create(connection, transaction) {
   return rows[0];
 }
 
+async function createTransferPair(connection, transfer) {
+  const debit = await create(connection, {
+    accountId: transfer.sourceAccountId,
+    type: 'debit',
+    amount: transfer.amount,
+    description: transfer.description,
+    referenceId: transfer.referenceId,
+  });
+  const credit = await create(connection, {
+    accountId: transfer.destinationAccountId,
+    type: 'credit',
+    amount: transfer.amount,
+    description: transfer.description,
+    referenceId: transfer.referenceId,
+  });
+  return { debit, credit };
+}
+
 async function findHistory({ accountId, type, limit, offset }) {
   const typeClause = type ? ' AND type = ?' : '';
   const values = type ? [accountId, type, limit, offset] : [accountId, limit, offset];
@@ -40,4 +58,4 @@ async function findHistory({ accountId, type, limit, offset }) {
   return { rows, total: Number(countRows[0].total) };
 }
 
-module.exports = { create, findByReference, findHistory };
+module.exports = { create, createTransferPair, findByReference, findHistory };

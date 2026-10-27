@@ -24,4 +24,5 @@ export const api = {
   createTransaction: (id, payload) => request(`/accounts/${id}/transactions`, {
     method: 'POST', body: JSON.stringify(payload),
   }),
+  transfer: (payload) => request('/transfers', { method: 'POST', body: JSON.stringify(payload) }),
 };
